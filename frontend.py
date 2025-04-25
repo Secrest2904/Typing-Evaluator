@@ -4,10 +4,13 @@ import random
 import time
 import traceback
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QSizePolicy,
-                             QLabel, QStackedWidget, QTextEdit, QRadioButton, QCheckBox)
+                             QLabel, QStackedWidget, QTextEdit, QRadioButton, QCheckBox, 
+                             QLineEdit)
 from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
 from PyQt5.QtCore import Qt, QTimer
-from backend import get_random_prompt
+from backend import get_random_prompt, save_to_leaderboard
+
+LEADERBOARD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files", "leaderboard.txt")
 
 # Exception hook for clearer error reporting
 def excepthook(type, value, tb):
@@ -94,56 +97,43 @@ class SettingsScreen(QWidget):
         settings["show_wpm"] = self.wpm_checkbox.isChecked()
 
 class TypingScreen(QWidget):
-    def __init__(self, backend):
+    def __init__(self, stacked_widget):
         super().__init__()
-        self.backend = backend
-        self.prompt = self.backend.get_prompt()
-        self.current_index = 0
+        self.setStyleSheet("background-color: #000080; color: white;")
+        self.stacked_widget = stacked_widget
+        self.layout = QVBoxLayout()
 
-        self.text_display = QLabel(self.prompt)
-        self.input_display = QLabel("")  # Show typed characters
+        self.wpm_label = QLabel("WPM: 0")
+        self.time_label = QLabel("Time: 0:00")
+        self.prompt_text = ""
+        self.typed_text = ""
+        self.error_indices = set()
+        self.start_time = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_timer)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.text_display)
-        layout.addWidget(self.input_display)
-        self.setLayout(layout)
+        self.prompt_display = QLabel()
+        self.prompt_display.setWordWrap(True)
+        self.prompt_display.setStyleSheet("color: lightgrey; font-size: 16px;")
 
-    def keyPressEvent(self, event):
-        if event.text():
-            typed_char = event.text()
-            if self.prompt[self.current_index] == typed_char:
-                self.current_index += 1
-                self.input_display.setText(self.prompt[:self.current_index])
+        self.textbox = QTextEdit()
+        self.textbox.setStyleSheet("background-color: white; color: black; font-size: 16px;")
+        self.textbox.textChanged.connect(self.on_text_changed)
 
-                if self.current_index == len(self.prompt):
-                    print("Typing completed!")
-                    # Trigger results screen here
-            else:
-                print("Wrong character!")
+        self.layout.addWidget(self.prompt_display)
+        self.layout.addWidget(self.wpm_label)
+        self.layout.addWidget(self.time_label)
+        self.layout.addWidget(self.textbox)
 
+        self.setLayout(self.layout)
 
     def load_prompt(self):
         self.prompt_text = get_random_prompt(settings["difficulty"])
-        print(f"Loaded prompt: {self.prompt_text}")  # Debug: Check what prompt is loaded
         self.prompt_display.setText(self.prompt_text)
         self.textbox.clear()
         self.start_time = time.time()
-        self.mistakes = 0
+        self.error_indices = set()
         self.timer.start(1000)
-
-    def start_typing(self):
-        file_path = EASY_PATH if settings["difficulty"] == "easy" else HARD_PATH
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                prompts = [line.strip() for line in f.readlines() if line.strip()]
-            self.prompt_text = random.choice(prompts)
-            self.prompt_display.setText(self.prompt_text)
-            self.textbox.clear()
-            self.start_time = time.time()
-            self.mistakes = 0
-            self.timer.start(1000)
-        else:
-            self.prompt_display.setText("No prompts found.")
 
     def update_timer(self):
         if self.start_time:
@@ -153,91 +143,154 @@ class TypingScreen(QWidget):
             self.time_label.setText(f"Time: {minutes}:{seconds:02d}")
 
     def on_text_changed(self):
+        if not self.start_time:
+            return
         typed = self.textbox.toPlainText()
+
+        # Stop typing if it exceeds prompt
+        if len(typed) > len(self.prompt_text):
+            self.textbox.blockSignals(True)
+            self.textbox.setPlainText(typed[:len(self.prompt_text)])
+            self.textbox.blockSignals(False)
+            return
+
         self.typed_text = typed
 
-        # Count mistakes
-        self.mistakes = sum(1 for i in range(min(len(typed), len(self.prompt_text))) if typed[i] != self.prompt_text[i])
+        # Record mistake positions once
+        for i in range(len(typed)):
+            if typed[i] != self.prompt_text[i] and i not in self.error_indices:
+                self.error_indices.add(i)
 
-        # Calculate WPM
-        elapsed_minutes = (time.time() - self.start_time) / 60 if self.start_time else 1
-        words_typed = len(typed.split())
-        wpm = int(words_typed / elapsed_minutes)
+        # WPM calc (5 chars = 1 word)
+        elapsed_minutes = max((time.time() - self.start_time) / 60, 0.01)
+        wpm = int((len(typed) / 5) / elapsed_minutes)
         self.wpm_label.setText(f"WPM: {wpm}")
 
-        # Update display color feedback (optional: style directly here)
+        # Highlight
         self.update_highlight()
-        if typed == self.prompt_text:
+
+        # Check finish
+        if len(typed) == len(self.prompt_text):
             self.timer.stop()
             duration = int(time.time() - self.start_time)
-            wpm = int(len(typed.split()) / (duration / 60))
-            self.stacked_widget.widget(3).stats_label.setText(
-                f"Finished!\nWPM: {wpm}\nMistakes: {self.mistakes}\nTime: {duration} seconds"
-            )
+            results_screen = self.stacked_widget.widget(3)
+            results_screen.set_stats(wpm, len(self.error_indices), duration)
             self.stacked_widget.setCurrentIndex(3)
 
-
     def update_highlight(self):
-        cursor = self.textbox.textCursor()
-        text = self.textbox.toPlainText()
-
         self.textbox.blockSignals(True)
+        cursor = self.textbox.textCursor()
+        cursor.beginEditBlock()
 
-        self.textbox.selectAll()
-        default_fmt = QTextCharFormat()
-        default_fmt.setForeground(QColor("black"))
-        self.textbox.textCursor().mergeCharFormat(default_fmt)
+        text = self.textbox.toPlainText()
+        fmt_correct = QTextCharFormat()
+        fmt_correct.setForeground(QColor("black"))
+
+        fmt_wrong = QTextCharFormat()
+        fmt_wrong.setForeground(QColor("red"))
 
         cursor.setPosition(0)
-        for i in range(min(len(text), len(self.prompt_text))):
-            fmt = QTextCharFormat()
-            if text[i] == self.prompt_text[i]:
-                fmt.setForeground(QColor("black"))
-            else:
-                fmt.setForeground(QColor("red"))
+        for i in range(len(text)):
             cursor.setPosition(i)
             cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+            fmt = fmt_wrong if i in self.error_indices else fmt_correct
             cursor.mergeCharFormat(fmt)
 
+        cursor.endEditBlock()
         self.textbox.blockSignals(False)
 
 class ResultsScreen(QWidget):
     def __init__(self, stacked_widget):
         super().__init__()
         self.setStyleSheet("background-color: #000080; color: white;")
+        self.stacked_widget = stacked_widget
+
         layout = QVBoxLayout()
+
         self.stats_label = QLabel("Stats will show here.")
         layout.addWidget(self.stats_label)
 
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("Enter your name")
+        layout.addWidget(self.name_input)
+
+        submit_btn = QPushButton("Submit to Leaderboard")
+        submit_btn.setStyleSheet("background-color: white; color: #000080;")
+        submit_btn.clicked.connect(self.submit_score)
+        layout.addWidget(submit_btn)
+
         back_btn = QPushButton("Back to Start")
         back_btn.setStyleSheet("background-color: white; color: #000080;")
-        back_btn.clicked.connect(lambda: stacked_widget.setCurrentIndex(0))
+        back_btn.clicked.connect(self.go_home)
         layout.addWidget(back_btn)
 
         self.setLayout(layout)
+        self.wpm = 0
+        self.mistakes = 0
+        self.duration = 0
+
+    def set_stats(self, wpm, mistakes, duration):
+        self.wpm = wpm
+        self.mistakes = mistakes
+        self.duration = duration
+        self.stats_label.setText(
+            f"Finished!\nWPM: {wpm}\nMistakes: {mistakes}\nTime: {duration} seconds"
+        )
+
+    def submit_score(self):
+        name = self.name_input.text().strip() or "Anonymous"
+        from backend import save_to_leaderboard
+        save_to_leaderboard(name, self.wpm, self.mistakes, settings["difficulty"])
+        self.name_input.clear()
+        self.go_home()
+
+    def go_home(self):
+        self.stacked_widget.widget(4).load_scores()
+        self.stacked_widget.setCurrentIndex(0)
 
 class LeaderboardScreen(QWidget):
     def __init__(self, stacked_widget):
         super().__init__()
         self.setStyleSheet("background-color: #000080; color: white;")
+        self.stacked_widget = stacked_widget
         layout = QVBoxLayout()
         self.board = QLabel("Leaderboard:")
+        self.board.setStyleSheet("font-size: 16px;")
+        self.board.setWordWrap(True)
+
         layout.addWidget(self.board)
+
+        clear_btn = QPushButton("Clear Leaderboard")
+        clear_btn.setStyleSheet("background-color: red; color: white;")
+        clear_btn.clicked.connect(self.clear_leaderboard)
+        layout.addWidget(clear_btn)
 
         back_btn = QPushButton("Back")
         back_btn.setStyleSheet("background-color: white; color: #000080;")
-        back_btn.clicked.connect(lambda: stacked_widget.setCurrentIndex(0))
+        back_btn.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
         layout.addWidget(back_btn)
 
         self.setLayout(layout)
 
     def load_scores(self):
-        if os.path.exists(LEADERBOARD_PATH):
-            with open(LEADERBOARD_PATH, 'r') as f:
-                content = f.read()
-            self.board.setText("Leaderboard:\n" + content)
+        if os.path.exists(LEADERBOARD_FILE):
+            with open(LEADERBOARD_FILE, 'r') as f:
+                lines = [line.strip() for line in f if line.strip()]
+            easy_scores = [line for line in lines if line.lower().startswith("easy")]
+            hard_scores = [line for line in lines if line.lower().startswith("hard")]
+
+            content = "Leaderboard:\n\n"
+            if easy_scores:
+                content += "📗 Easy:\n" + "\n".join(easy_scores) + "\n\n"
+            if hard_scores:
+                content += "📘 Hard:\n" + "\n".join(hard_scores)
+            self.board.setText(content)
         else:
             self.board.setText("Leaderboard is empty.")
+
+    def clear_leaderboard(self):
+        open(LEADERBOARD_FILE, 'w').close()
+        self.board.setText("Leaderboard cleared.")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

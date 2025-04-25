@@ -5,7 +5,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EASY_PROMPT_FILE = os.path.join(BASE_DIR, "files", "Easy.txt")
 HARD_PROMPT_FILE = os.path.join(BASE_DIR, "files", "Hard.txt")
 
-LEADERBOARD_FILE = 'files/leaderboard.txt'
+LEADERBOARD_FILE = os.path.join(BASE_DIR, "files", "leaderboard.txt")
 
 def load_prompts(difficulty):
     file_path = EASY_PROMPT_FILE if difficulty == 'easy' else HARD_PROMPT_FILE
@@ -22,7 +22,6 @@ def get_random_prompt(difficulty):
         return "No prompts found."
     return random.choice(prompts)
 
-
-def save_to_leaderboard(name, wpm, mistakes):
+def save_to_leaderboard(name, wpm, mistakes, difficulty):
     with open(LEADERBOARD_FILE, 'a', encoding='utf-8') as f:
-        f.write(f"{name} - WPM: {wpm}, Mistakes: {mistakes}\n")
+        f.write(f"{difficulty.capitalize()} - {name} - WPM: {wpm}, Mistakes: {mistakes}\n")
