@@ -35,7 +35,6 @@ Welcome to the **Typing Test Application**, a sleek and customizable desktop app
 ## 📸 Screenshots
 
 ![image](https://github.com/user-attachments/assets/9a8d7293-613b-4021-ba26-6044e6dc1d09)
-![image](https://github.com/user-attachments/assets/0c3a5ea9-b2fa-4163-8881-ac738ef5ede3)
 ![image](https://github.com/user-attachments/assets/a9e7d546-8ade-441e-abdf-ac907335159e)
 
 
