@@ -470,6 +470,7 @@ if __name__ == '__main__':
     stacked_widget.addWidget(results_screen)     # 3
     stacked_widget.addWidget(leaderboard_screen) # 4
 
-    stacked_widget.setFixedSize(600, 400)
+    stacked_widget.resize(700, 480)
+
     stacked_widget.show()
     sys.exit(app.exec_())
