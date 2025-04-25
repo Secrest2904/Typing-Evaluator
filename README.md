@@ -52,7 +52,11 @@ Welcome to the **Typing Test Application**, a sleek and customizable desktop app
 ```bash
 pip install PyQt5
 
+```
 ### Run with
+```
 python frontend.py
-- or -
+```
+OR
+```
 python3 frontend.py
