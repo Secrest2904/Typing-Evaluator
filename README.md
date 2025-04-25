@@ -57,6 +57,6 @@ pip install PyQt5
 ```
 python frontend.py
 ```
-OR
+### OR
 ```
 python3 frontend.py
