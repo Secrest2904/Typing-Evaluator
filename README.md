@@ -1,9 +1,9 @@
 # ⌨️ Typing Test Application
 
 ## Created by:
-- Tyler Hid
+- Tyler Hidalgo
 - Swayam Shree
-- Robert Hidalgo
+- Robert Gutierrez
 - Adam Secrest
 
 Welcome to the **Typing Test Application**, a sleek and customizable desktop app built using **PyQt5**. Challenge yourself with random typing prompts, track your **WPM**, review your performance stats, and compete on the **Leaderboard**!
