@@ -1,27 +1,35 @@
 import os
 import random
+from pymongo import MongoClient
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-EASY_PROMPT_FILE = os.path.join(BASE_DIR, "files", "Easy.txt")
-HARD_PROMPT_FILE = os.path.join(BASE_DIR, "files", "Hard.txt")
+# ─── MongoDB setup ─────────────────────────────────────────────────────────
+MONGO_URI   = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+client      = MongoClient(MONGO_URI)
+db          = client["typing_test"]
+prompts_col = db["prompts"]
 
-LEADERBOARD_FILE = os.path.join(BASE_DIR, "files", "leaderboard.txt")
+# ─── Leaderboard file (unchanged) ───────────────────────────────────────────
+LEADERBOARD_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "files",
+    "leaderboard.txt"
+)
 
+# ─── Prompt-loading functions ───────────────────────────────────────────────
 def load_prompts(difficulty):
-    file_path = EASY_PROMPT_FILE if difficulty == 'easy' else HARD_PROMPT_FILE
-    if not os.path.exists(file_path):
-        return []
-    with open(file_path, 'r', encoding='utf-8') as f:
-        prompts = [line.strip() for line in f if line.strip()]
-    return prompts
+    """
+    Return a list of all 'text' fields for documents
+    in the 'prompts' collection matching the given difficulty.
+    """
+    return [doc["text"] for doc in prompts_col.find({"difficulty": difficulty})]
 
 def get_random_prompt(difficulty):
-    prompts = load_prompts(difficulty)
-    print(f"[DEBUG] Loaded {len(prompts)} prompts from {difficulty} file.")
-    if not prompts:
-        return "No prompts found."
-    return random.choice(prompts)
+    """
+    Pick one prompt at random (or fallback text if empty).
+    """
+    arr = load_prompts(difficulty)
+    return random.choice(arr) if arr else "No prompts found."
 
-def save_to_leaderboard(name, wpm, mistakes, difficulty):
+# ─── Leaderboard-writing function ───────────────────────────────────────────def save_to_leaderboard(name, wpm, mistakes, difficulty):
     with open(LEADERBOARD_FILE, 'a', encoding='utf-8') as f:
         f.write(f"{difficulty.capitalize()} - {name} - WPM: {wpm}, Mistakes: {mistakes}\n")
