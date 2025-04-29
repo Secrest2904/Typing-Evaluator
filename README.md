@@ -52,7 +52,7 @@ Welcome to the **Typing Test Application**, a sleek and customizable desktop app
 ### Install Dependencies
 
 ```bash
-pip install PyQt5
+pip install PyQt5 pymongo
 
 ```
 ### Run with
