@@ -46,6 +46,7 @@ Welcome to the **Typing Test Application**, a sleek and customizable desktop app
 
 - Python 3.x
 - PyQt5
+- Pymongo
 
 ### Install Dependencies
 
