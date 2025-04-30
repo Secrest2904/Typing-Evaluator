@@ -6,7 +6,7 @@ import traceback
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QVBoxLayout, QSizePolicy,
                              QLabel, QStackedWidget, QTextEdit, QRadioButton, QCheckBox, 
                              QLineEdit)
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QFont
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QFont, QIcon
 from PyQt5.QtCore import Qt, QTimer
 from backend import get_random_prompt, save_to_leaderboard
 from PyQt5.QtWidgets import QGraphicsOpacityEffect
@@ -71,7 +71,7 @@ class TitleScreen(QWidget):
         layout.addWidget(title_label)
 
         self.start_btn = QPushButton("🚀 Start Typing")
-        self.settings_btn = QPushButton("⚙️ Settings")
+        self.settings_btn = QPushButton("⛭ Settings")
         self.history_btn = QPushButton("📜 Leaderboard")
 
         layout.addWidget(self.start_btn)
@@ -124,7 +124,7 @@ class SettingsScreen(QWidget):
         layout.setSpacing(15)
         layout.setContentsMargins(40, 30, 40, 30)
 
-        header = QLabel("⚙️ Settings")
+        header = QLabel("⛭ Settings")
         header.setFont(QFont("Arial", 22, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         layout.addWidget(header)
