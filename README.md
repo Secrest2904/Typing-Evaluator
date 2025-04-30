@@ -46,14 +46,11 @@ Welcome to the **Typing Test Application**, a sleek and customizable desktop app
 
 - Python 3.x
 - PyQt5
-- Pymongo
-- Running mongoDB server
 
 ### Install Dependencies
 
 ```bash
-pip install PyQt5 pymongo
-
+pip install PyQt5
 ```
 ### Run with
 ```
