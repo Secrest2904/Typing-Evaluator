@@ -22,7 +22,7 @@ DB_NAME       = "typing_test"
 COL_NAME      = "prompts"
 MIN_LEN       = 190       # minimum characters per prompt
 MAX_LEN       = 210       # maximum characters per prompt
-SYMBOL_THRESH = 10        # non-letter threshold for difficulty
+SYMBOL_THRESH = 6        # non-letter threshold for difficulty
 N_SAMPLES     = 500       # how many prompts to generate
 
 # ─── MongoDB Setup ──────────────────────────────────────────────────────────
@@ -91,6 +91,9 @@ while count < N_SAMPLES and attempts < max_attempts:
         continue
     end = random.choice(candidates)
     snippet = body[start:end]
+	# skip any snippets that contain "[[" or "]]"
+    if '[[' in snippet or ']]' in snippet:
+        continue
 
     sym_count = count_non_letters(snippet)
     difficulty = "easy" if sym_count <= SYMBOL_THRESH else "hard"
